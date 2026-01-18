@@ -468,11 +468,17 @@
     }
   },
   "Electric Vehicle": {
+    "set_use_ev": {
+      "friendly_name": "Enable Electric Vehicle",
+      "Description": "Set to True if you want to optimize electric vehicle charging. Defaults to False.",
+      "input": "boolean",
+      "default_value": false
+    },
     "number_of_ev_loads": {
       "friendly_name": "Number of electric vehicles",
-      "Description": "Define the number of electric vehicles to optimize. Set to 0 to disable EV optimization. Defaults to 0.",
+      "Description": "Define the number of electric vehicles to optimize. Defaults to 1.",
       "input": "int",
-      "default_value": 0
+      "default_value": 1
     },
     "ev_battery_capacity": {
       "friendly_name": "EV battery capacity (Wh)",

@@ -121,7 +121,7 @@ function loadConfigurationListView(param_definitions, config, list_html) {
   }
 
   //list parameters used in the section headers
-  let header_input_list = ["set_use_battery", "set_use_pv", "number_of_deferrable_loads", "number_of_ev_loads"];
+  let header_input_list = ["set_use_battery", "set_use_pv", "number_of_deferrable_loads", "set_use_ev"];
 
   //get the main container and append list template html
   document.getElementById("configuration-container").innerHTML = list_html;
@@ -672,6 +672,19 @@ function headerElement(element, param_definitions, config) {
             minusElements(param.id);
           }
         }
+      }
+      break;
+
+    //if set_use_ev, add or remove EV section (inc. params)
+    case "set_use_ev":
+      if (element.checked) {
+        param_container.innerHTML = "";
+        buildParamContainers("Electric Vehicle", param_definitions["Electric Vehicle"], config, [
+          "set_use_ev",
+        ]);
+        element.checked = true;
+      } else {
+        param_container.innerHTML = "";
       }
       break;
 
