@@ -1610,11 +1610,11 @@ def param_to_config(param: dict[str, dict], logger: logging.Logger) -> dict[str,
     ]
 
     # Loop through config catagories that contain config params, and extract
-    for config in config_catagories:
-        for parameter in param[config]:
+    for config_category in config_catagories:
+        for parameter in param[config_category]:
             # If parameter is not a secret, append to return_config
             if parameter not in secret_params:
-                return_config[str(parameter)] = param[config][parameter]
+                return_config[str(parameter)] = param[config_category][parameter]
 
     return return_config
 
