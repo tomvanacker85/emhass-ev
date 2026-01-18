@@ -156,7 +156,8 @@ function loadConfigurationListView(param_definitions, config, list_html) {
           header_input_element.value = value;
           //checkboxes (for Booleans) also set value to "checked"
           if (header_input_element.type == "checkbox") {
-            header_input_element.checked = value;
+            // Ensure boolean value for checkbox
+            header_input_element.checked = (value === true || value === "true");
           }
           //manually trigger the header parameter input event listener for setting up initial section state
           headerElement(header_input_element, param_definitions, config);
