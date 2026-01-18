@@ -121,7 +121,7 @@ function loadConfigurationListView(param_definitions, config, list_html) {
   }
 
   //list parameters used in the section headers
-  let header_input_list = ["set_use_battery", "set_use_pv", "number_of_deferrable_loads"];
+  let header_input_list = ["set_use_battery", "set_use_pv", "number_of_deferrable_loads", "number_of_ev_loads"];
 
   //get the main container and append list template html
   document.getElementById("configuration-container").innerHTML = list_html;
