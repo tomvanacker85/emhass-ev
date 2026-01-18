@@ -674,6 +674,39 @@ function headerElement(element, param_definitions, config) {
         }
       }
       break;
+
+    //if number_of_ev_loads, the number of inputs in the "Electric Vehicle" section should add up to number_of_ev_loads value in header
+    case "number_of_ev_loads":
+      //get a list of param in section
+      param_list = param_container.getElementsByClassName("param");
+      if (param_list.length <= 0) {
+        console.log(
+          "There has been an issue counting the amount of params in number_of_ev_loads"
+        );
+        return 1;
+      }
+      //calculate how much off the first parameters input elements amount to is, comparing to the number_of_ev_loads value
+      difference =
+        Number.parseInt(element.value) -
+        param_container.firstElementChild.querySelectorAll("input").length;
+      //add elements based on how many elements are missing
+      if (difference > 0) {
+        for (let i = difference; i >= 1; i--) {
+          for (const param of param_list) {
+            //append element, do not pass config to obtain default parameter from definitions file
+            plusElements(param.id, param_definitions, "Electric Vehicle", {});
+          }
+        }
+      }
+      //subtract elements based how many elements its over
+      if (difference < 0) {
+        for (let i = difference; i <= -1; i++) {
+          for (const param of param_list) {
+            minusElements(param.id);
+          }
+        }
+      }
+      break;
   }
 }
 
