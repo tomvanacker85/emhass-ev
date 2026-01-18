@@ -1,0 +1,62 @@
+INFO - web_server - 🚀 Launching the EMHASS-EV webserver at: http://0.0.0.0:5001
+INFO - web_server - 🚀 Launching the EMHASS-EV webserver at: http://0.0.0.0:5001
+INFO - web_server - Home Assistant data fetch will be performed using url: https://myhass.duckdns.org/
+INFO - web_server - Home Assistant data fetch will be performed using url: https://myhass.duckdns.org/
+INFO - web_server - The data path is: /workspaces/emhass-workspace/emhass-ev/src/emhass/data
+INFO - web_server - The data path is: /workspaces/emhass-workspace/emhass-ev/src/emhass/data
+INFO - web_server - The logging is: INFO
+INFO - web_server - The logging is: INFO
+INFO - web_server - Using core emhass version: 0.15.5
+INFO - web_server - Using core emhass version: 0.15.5
+INFO - web_server - WebSocket and InfluxDB modes disabled - using REST API for data retrieval
+INFO - web_server - WebSocket and InfluxDB modes disabled - using REST API for data retrieval
+INFO - web_server - Initialization complete
+INFO - web_server - Initialization complete
+INFO - web_server - Full initialization completed
+INFO - web_server - Full initialization completed
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server - config.json does not exist, or has not been passed. config parameters may default to config_defaults.json
+INFO - web_server - config.json does not exist, or has not been passed. config parameters may default to config_defaults.json
+INFO - web_server - you may like to generate the config.json file on the configuration page
+INFO - web_server - you may like to generate the config.json file on the configuration page
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server -  >> Obtaining params: 
+INFO - web_server -  >> Obtaining params: 
+ERROR - web_server - Error parsing runtime params JSON: 400 Bad Request: The browser (or proxy) sent a request that this server could not understand.
+ERROR - web_server - Error parsing runtime params JSON: 400 Bad Request: The browser (or proxy) sent a request that this server could not understand.
+ERROR - web_server - Check your payload for syntax errors (e.g., use 'false' instead of 'False')
+ERROR - web_server - Check your payload for syntax errors (e.g., use 'false' instead of 'False')
+INFO - web_server - EV optimization disabled (number_of_ev_loads = 0)
+INFO - web_server - EV optimization disabled (number_of_ev_loads = 0)
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - EMHASS server online, serving index.html...
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - web_server -  >> Obtaining params: 
+INFO - web_server -  >> Obtaining params: 
+INFO - web_server - Passed runtime parameters: {'number_of_ev_loads': 1}
+INFO - web_server - Passed runtime parameters: {'number_of_ev_loads': 1}
+INFO - web_server -  >> Setting input data dict
+INFO - web_server -  >> Setting input data dict
+INFO - web_server - Setting up needed data
+INFO - web_server - Setting up needed data
+INFO - web_server - get HA config from rest api.
+INFO - web_server - get HA config from rest api.
+ERROR - web_server - Unable to obtain configuration from Home Assistant at: https://myhass.duckdns.org/api/config
+ERROR - web_server - Unable to obtain configuration from Home Assistant at: https://myhass.duckdns.org/api/config
+ERROR - web_server - Error details: Cannot connect to host myhass.duckdns.org:443 ssl:default [Connect call failed ('83.254.44.13', 443)]
+ERROR - web_server - Error details: Cannot connect to host myhass.duckdns.org:443 ssl:default [Connect call failed ('83.254.44.13', 443)]
+INFO - web_server - No WebSocket connection to close
+INFO - web_server - No WebSocket connection to close
+INFO - web_server - Quart shutdown complete
+INFO - web_server - Quart shutdown complete

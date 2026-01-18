@@ -9,5 +9,11 @@
   "Longitude": 0,
   "Altitude": 0,
   "data_path": "default",
-  "server_ip": "0.0.0.0"
+  "server_ip": "0.0.0.0",
+  "number_of_ev_loads": 0,
+  "ev_battery_capacity": [77000],
+  "ev_charging_efficiency": [0.9],
+  "ev_nominal_charging_power": [4600],
+  "ev_minimum_charging_power": [1380],
+  "ev_consumption_efficiency": [0.15]
 }

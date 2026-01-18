@@ -523,5 +523,221 @@ class TestWebServer(unittest.IsolatedAsyncioTestCase):
             logger.setLevel(original_level)
 
 
+class TestEVEndpoints(unittest.IsolatedAsyncioTestCase):
+    """Test cases for EV-specific API endpoints."""
+
+    async def asyncSetUp(self):
+        """Set up test client and mocks for EV endpoints."""
+        self.client = web_server.app.test_client()
+        
+        # Mock configuration
+        self.mock_conf = {
+            "data_path": pathlib.Path("/tmp/emhass/data"),
+            "config_path": pathlib.Path("/tmp/emhass/config.json"),
+            "defaults_path": pathlib.Path("/tmp/emhass/defaults.json"),
+            "associations_path": pathlib.Path("/tmp/emhass/assoc.csv"),
+            "legacy_config_path": pathlib.Path("/tmp/emhass/legacy.yaml"),
+            "root_path": pathlib.Path("/tmp/emhass/root"),
+        }
+        
+        # Save and replace config
+        self.original_conf = web_server.emhass_conf.copy()
+        web_server.emhass_conf = self.mock_conf
+        
+        # Mock params with EV enabled
+        web_server.params_secrets = {
+            "hass_url": "http://localhost",
+            "long_lived_token": "token"
+        }
+        
+        # Save original handlers
+        self.original_handlers = web_server.app.logger.handlers[:]
+
+    async def asyncTearDown(self):
+        """Clean up after tests."""
+        web_server.emhass_conf = self.original_conf
+        web_server.app.logger.handlers = self.original_handlers
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_soc_endpoint(self, mock_logger):
+        """Test POST /action/ev-soc endpoint."""
+        # Mock the EV manager
+        mock_ev_manager = MagicMock()
+        mock_ev = MagicMock()
+        mock_ev.set_soc = MagicMock()
+        mock_ev.get_soc = MagicMock(return_value=0.65)
+        mock_ev_manager.get_ev = MagicMock(return_value=mock_ev)
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            response = await self.client.post(
+                "/action/ev-soc",
+                json={"ev_id": 0, "soc_percent": 65.0}
+            )
+            
+            self.assertEqual(response.status_code, 200)
+            data = await response.get_json()
+            self.assertIn("message", data)
+            mock_ev.set_soc.assert_called_once()
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_soc_invalid_data(self, mock_logger):
+        """Test ev-soc endpoint with invalid data."""
+        response = await self.client.post(
+            "/action/ev-soc",
+            json={"ev_id": 0}  # Missing soc_percent
+        )
+        
+        # Should return error status
+        self.assertIn(response.status_code, [400, 422, 500])
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_availability_endpoint(self, mock_logger):
+        """Test POST /action/ev-availability endpoint."""
+        mock_ev_manager = MagicMock()
+        mock_ev_manager.set_availability_schedule = MagicMock()
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        availability_array = [1, 1, 0, 0, 1, 1, 1, 1]
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            response = await self.client.post(
+                "/action/ev-availability",
+                json={"ev_id": 0, "availability": availability_array}
+            )
+            
+            self.assertEqual(response.status_code, 200)
+            mock_ev_manager.set_availability_schedule.assert_called_once_with(0, availability_array)
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_range_requirements_endpoint(self, mock_logger):
+        """Test POST /action/ev-range-requirements endpoint."""
+        mock_ev_manager = MagicMock()
+        mock_ev_manager.set_range_requirements = MagicMock()
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        range_requirements = [0, 0, 100, 150, 200, 150, 0, 0]
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            response = await self.client.post(
+                "/action/ev-range-requirements",
+                json={"ev_id": 0, "min_range_km": range_requirements}
+            )
+            
+            self.assertEqual(response.status_code, 200)
+            mock_ev_manager.set_range_requirements.assert_called_once_with(0, range_requirements)
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_status_endpoint(self, mock_logger):
+        """Test GET /action/ev-status endpoint."""
+        mock_ev_manager = MagicMock()
+        mock_ev = MagicMock()
+        mock_ev.get_soc = MagicMock(return_value=0.65)
+        mock_ev.get_energy_level = MagicMock(return_value=50050)  # Wh
+        mock_ev.get_current_range = MagicMock(return_value=333.67)  # km
+        mock_ev.is_available = True
+        mock_ev_manager.get_ev = MagicMock(return_value=mock_ev)
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            response = await self.client.get("/action/ev-status?ev_id=0")
+            
+            self.assertEqual(response.status_code, 200)
+            data = await response.get_json()
+            
+            self.assertEqual(data["ev_id"], 0)
+            self.assertAlmostEqual(data["soc_percent"], 65.0, places=1)
+            self.assertIn("range_km", data)
+            self.assertIn("is_available", data)
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_status_invalid_id(self, mock_logger):
+        """Test ev-status endpoint with invalid EV ID."""
+        mock_ev_manager = MagicMock()
+        mock_ev_manager.get_ev = MagicMock(return_value=None)  # Invalid ID
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            response = await self.client.get("/action/ev-status?ev_id=99")
+            
+            # Should return error
+            self.assertIn(response.status_code, [400, 404, 500])
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_endpoints_when_disabled(self, mock_logger):
+        """Test EV endpoints when EV optimization is disabled."""
+        mock_ev_manager = MagicMock()
+        mock_ev_manager.is_enabled = MagicMock(return_value=False)
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            # Test SOC endpoint
+            response = await self.client.post(
+                "/action/ev-soc",
+                json={"ev_id": 0, "soc_percent": 65.0}
+            )
+            # Should return error or message indicating EV is disabled
+            self.assertIn(response.status_code, [400, 404, 500])
+
+    @patch("emhass.web_server.app.logger")
+    async def test_ev_availability_with_numpy_array(self, mock_logger):
+        """Test that endpoint handles numpy arrays correctly."""
+        import numpy as np
+        
+        mock_ev_manager = MagicMock()
+        mock_ev_manager.set_availability_schedule = MagicMock()
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        # Use regular list (numpy serialization handled by orjson in actual code)
+        availability_array = [1, 1, 0, 0, 1]
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            response = await self.client.post(
+                "/action/ev-availability",
+                json={"ev_id": 0, "availability": availability_array}
+            )
+            
+            self.assertEqual(response.status_code, 200)
+
+    @patch("emhass.web_server.app.logger")
+    async def test_multiple_evs(self, mock_logger):
+        """Test endpoints with multiple EVs."""
+        mock_ev_manager = MagicMock()
+        mock_ev_manager.num_evs = 2
+        mock_ev_manager.is_enabled = MagicMock(return_value=True)
+        
+        # Create two mock EVs
+        mock_ev0 = MagicMock()
+        mock_ev0.set_soc = MagicMock()
+        mock_ev0.get_soc = MagicMock(return_value=0.5)
+        
+        mock_ev1 = MagicMock()
+        mock_ev1.set_soc = MagicMock()
+        mock_ev1.get_soc = MagicMock(return_value=0.8)
+        
+        def get_ev_side_effect(ev_id):
+            return mock_ev0 if ev_id == 0 else mock_ev1
+        
+        mock_ev_manager.get_ev = MagicMock(side_effect=get_ev_side_effect)
+        
+        with patch("emhass.web_server.ev_manager", mock_ev_manager):
+            # Test EV 0
+            response0 = await self.client.post(
+                "/action/ev-soc",
+                json={"ev_id": 0, "soc_percent": 50.0}
+            )
+            self.assertEqual(response0.status_code, 200)
+            
+            # Test EV 1
+            response1 = await self.client.post(
+                "/action/ev-soc",
+                json={"ev_id": 1, "soc_percent": 80.0}
+            )
+            self.assertEqual(response1.status_code, 200)
+            
+            # Verify both were called
+            mock_ev0.set_soc.assert_called_once()
+            mock_ev1.set_soc.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

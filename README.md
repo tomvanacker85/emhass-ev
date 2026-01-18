@@ -71,7 +71,17 @@ EMHASS is a Python module designed to optimize your home energy interfacing with
 
 ## Introduction
 
-EMHASS (Energy Management for Home Assistant) is an optimization tool designed for residential households. The package uses a Linear Programming approach to optimize energy usage while considering factors such as electricity prices, power generation from solar panels, and energy storage from batteries. EMHASS provides a high degree of configurability, making it easy to integrate with Home Assistant and other smart home systems. Whether you have solar panels, energy storage, or just a controllable load, EMHASS can provide an optimized daily schedule for your devices, allowing you to save money and minimize your environmental impact.
+EMHASS (Energy Management for Home Assistant) is an optimization tool designed for residential households. The package uses a Linear Programming approach to optimize energy usage while considering factors such as electricity prices, power generation from solar panels, energy storage from batteries, and **electric vehicle charging**. EMHASS provides a high degree of configurability, making it easy to integrate with Home Assistant and other smart home systems. Whether you have solar panels, energy storage, an electric vehicle, or just a controllable load, EMHASS can provide an optimized daily schedule for your devices, allowing you to save money and minimize your environmental impact.
+
+### ⚡ NEW: Electric Vehicle Optimization
+
+EMHASS now includes intelligent EV charging optimization! Automatically schedule your EV charging to:
+- Minimize electricity costs by charging during off-peak hours
+- Maximize solar energy utilization
+- Ensure sufficient charge for your planned trips
+- Support multiple vehicles with independent schedules
+
+👉 **[Read the EV Optimization Guide](docs/ev_guide.md)** to get started!
 
 The complete documentation for this package is [available here](https://emhass.readthedocs.io/en/latest/).
 
@@ -81,6 +91,7 @@ Here are the guides for:
 - [📦 Installation methods](/docs/installation_methods.md)
 - [📖 Usage](/docs/usage_guide.md)
 - [🤖 Home Assistant Automations](/docs/automations.md)
+- [⚡ Electric Vehicle Optimization](/docs/ev_guide.md) **NEW!**
 
 ## Development
 

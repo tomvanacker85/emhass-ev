@@ -116,5 +116,11 @@
   "battery_maximum_state_of_charge": 0.9,
   "battery_target_state_of_charge": 0.6,
   "battery_stress_cost": 0.0,
-  "battery_stress_segments": 10
+  "battery_stress_segments": 10,
+  "number_of_ev_loads": 0,
+  "ev_battery_capacity": [77000],
+  "ev_charging_efficiency": [0.9],
+  "ev_nominal_charging_power": [4600],
+  "ev_minimum_charging_power": [1380],
+  "ev_consumption_efficiency": [0.15]
 }

@@ -3,7 +3,7 @@ name = "emhass"
 version = "0.15.5"
 description = "An Energy Management System for Home Assistant"
 readme = "README.md"
-requires-python = ">=3.10, <3.13"
+requires-python = ">=3.10, <3.14"
 authors = [{ name = "David HERNANDEZ TORRES", email = "davidusb@gmail.com" }]
 license = { text = "MIT" }
 keywords = ["energy", "management", "optimization", "hass"]
@@ -101,9 +101,9 @@ include = [
 emhass = "emhass.command_line:main_sync"
 
 [project.urls]
-Homepage = "https://github.com/davidusb-geek/emhass"
-Source = "https://github.com/davidusb-geek/emhass"
-Issues = "https://github.com/davidusb-geek/emhass/issues"
+Homepage = "https://github.com/tomvanacker85/emhass-ev"
+Source = "https://github.com/tomvanacker85/emhass-ev"
+Issues = "https://github.com/tomvanacker85/emhass-ev/issues"
 Documentation = "https://emhass.readthedocs.io/en/latest/"
 Community = "https://community.home-assistant.io/t/emhass-an-energy-management-for-home-assistant"
 

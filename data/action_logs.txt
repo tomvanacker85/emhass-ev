@@ -1,0 +1,147 @@
+INFO - web_server - 🚀 Launching the EMHASS-EV webserver at: http://0.0.0.0:5001
+INFO - web_server - 🚀 Launching the EMHASS-EV webserver at: http://0.0.0.0:5001
+INFO - web_server - Home Assistant data fetch will be performed using url: https://myhass.duckdns.org/
+INFO - web_server - Home Assistant data fetch will be performed using url: https://myhass.duckdns.org/
+INFO - web_server - The data path is: /workspaces/emhass-workspace/emhass-ev/data
+INFO - web_server - The data path is: /workspaces/emhass-workspace/emhass-ev/data
+INFO - web_server - The logging is: INFO
+INFO - web_server - The logging is: INFO
+INFO - web_server - Using core emhass version: 0.15.5
+INFO - web_server - Using core emhass version: 0.15.5
+INFO - web_server - WebSocket and InfluxDB modes disabled - using REST API for data retrieval
+INFO - web_server - WebSocket and InfluxDB modes disabled - using REST API for data retrieval
+INFO - web_server - Initialization complete
+INFO - web_server - Initialization complete
+INFO - web_server - Full initialization completed
+INFO - web_server - Full initialization completed
+INFO - emhass.web_server - EMHASS server online, serving index.html...
+INFO - emhass.web_server - The data container dictionary is empty... Please launch an optimization task
+INFO - emhass.web_server - Obtaining parameters from config.json:
+INFO - emhass.web_server - serving configuration.html...
+ERROR - emhass.web_server - Exception on request GET /configuration
+Traceback (most recent call last):
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1464, in handle_request
+    return await self.full_dispatch_request(request_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1502, in full_dispatch_request
+    result = await self.handle_user_exception(error)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1059, in handle_user_exception
+    raise error
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1500, in full_dispatch_request
+    result = await self.dispatch_request(request_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1597, in dispatch_request
+    return await self.ensure_async(handler)(**request_.view_args)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/emhass/web_server.py", line 216, in configuration
+    emhass_conf["config_path"], params = pickle.loads(content)
+                                         ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'pathlib._local'; 'pathlib' is not a package
+INFO - emhass.web_server - serving configuration.html...
+ERROR - emhass.web_server - Exception on request GET /configuration
+Traceback (most recent call last):
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1464, in handle_request
+    return await self.full_dispatch_request(request_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1502, in full_dispatch_request
+    result = await self.handle_user_exception(error)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1059, in handle_user_exception
+    raise error
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1500, in full_dispatch_request
+    result = await self.dispatch_request(request_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1597, in dispatch_request
+    return await self.ensure_async(handler)(**request_.view_args)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/emhass/web_server.py", line 216, in configuration
+    emhass_conf["config_path"], params = pickle.loads(content)
+                                         ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'pathlib._local'; 'pathlib' is not a package
+INFO - emhass.web_server - serving configuration.html...
+ERROR - emhass.web_server - Exception on request GET /configuration
+Traceback (most recent call last):
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1464, in handle_request
+    return await self.full_dispatch_request(request_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1502, in full_dispatch_request
+    result = await self.handle_user_exception(error)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1059, in handle_user_exception
+    raise error
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1500, in full_dispatch_request
+    result = await self.dispatch_request(request_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1597, in dispatch_request
+    return await self.ensure_async(handler)(**request_.view_args)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/emhass/web_server.py", line 216, in configuration
+    emhass_conf["config_path"], params = pickle.loads(content)
+                                         ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'pathlib._local'; 'pathlib' is not a package
+INFO - emhass.web_server - serving configuration.html...
+ERROR - emhass.web_server - Exception on request GET /configuration
+Traceback (most recent call last):
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1464, in handle_request
+    return await self.full_dispatch_request(request_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1502, in full_dispatch_request
+    result = await self.handle_user_exception(error)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1059, in handle_user_exception
+    raise error
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1500, in full_dispatch_request
+    result = await self.dispatch_request(request_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1597, in dispatch_request
+    return await self.ensure_async(handler)(**request_.view_args)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/emhass/web_server.py", line 216, in configuration
+    emhass_conf["config_path"], params = pickle.loads(content)
+                                         ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'pathlib._local'; 'pathlib' is not a package
+INFO - emhass.web_server - serving configuration.html...
+ERROR - emhass.web_server - Exception on request GET /configuration
+Traceback (most recent call last):
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1464, in handle_request
+    return await self.full_dispatch_request(request_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1502, in full_dispatch_request
+    result = await self.handle_user_exception(error)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1059, in handle_user_exception
+    raise error
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1500, in full_dispatch_request
+    result = await self.dispatch_request(request_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1597, in dispatch_request
+    return await self.ensure_async(handler)(**request_.view_args)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/emhass/web_server.py", line 216, in configuration
+    emhass_conf["config_path"], params = pickle.loads(content)
+                                         ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'pathlib._local'; 'pathlib' is not a package
+INFO - emhass.web_server - serving configuration.html...
+ERROR - emhass.web_server - Exception on request GET /configuration
+Traceback (most recent call last):
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1464, in handle_request
+    return await self.full_dispatch_request(request_context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1502, in full_dispatch_request
+    result = await self.handle_user_exception(error)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1059, in handle_user_exception
+    raise error
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1500, in full_dispatch_request
+    result = await self.dispatch_request(request_context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/quart/app.py", line 1597, in dispatch_request
+    return await self.ensure_async(handler)(**request_.view_args)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/emhass/web_server.py", line 216, in configuration
+    emhass_conf["config_path"], params = pickle.loads(content)
+                                         ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'pathlib._local'; 'pathlib' is not a package
+INFO - emhass.web_server - No WebSocket connection to close
+INFO - emhass.web_server - Quart shutdown complete

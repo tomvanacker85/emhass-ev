@@ -61,7 +61,7 @@ RUN apt-get update \
     && ln -s /usr/include/hdf5/serial /usr/include/hdf5/include \
     # Create directories
     && mkdir -p /data/ \
-    && mkdir -p /share/emhass/
+    && mkdir -p /share/emhass-ev/
 
 # copy required EMHASS files
 COPY src/emhass/ /app/src/emhass/
@@ -90,13 +90,13 @@ ENV PYTHONUNBUFFERED 1
 
 # Docker Labels for hass
 LABEL \
-    io.hass.name="emhass" \
-    io.hass.description="EMHASS: Energy Management for Home Assistant" \
+    io.hass.name="emhass-ev" \
+    io.hass.description="EMHASS-EV: Energy Management for Home Assistant with EV support" \
     io.hass.version=${BUILD_VERSION} \
     io.hass.type="addon" \
     io.hass.arch="aarch64|amd64" \
-    org.opencontainers.image.source="https://github.com/davidusb-geek/emhass" \
-    org.opencontainers.image.description="EMHASS python package and requirements, in Home Assistant Debian container."
+    org.opencontainers.image.source="https://github.com/tomvanacker85/emhass-ev" \
+    org.opencontainers.image.description="EMHASS-EV python package and requirements, in Home Assistant Debian container."
 
 # Set up venv
 RUN uv venv && . .venv/bin/activate
@@ -118,7 +118,7 @@ RUN apt-get remove --purge -y --auto-remove \
 
 # Environment variables for flexibility
 ENV WORKER_CLASS=uvicorn.workers.UvicornWorker
-ENV PORT=5000
+ENV PORT=5001
 ENV IP=0.0.0.0
 
 # Entrypoint script inline

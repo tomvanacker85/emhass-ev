@@ -1745,6 +1745,79 @@ async def _publish_deferrable_loads(ctx: PublishContext, opt_res_latest: pd.Data
     return cols
 
 
+async def _publish_ev_loads(ctx: PublishContext, opt_res_latest: pd.DataFrame) -> list[str]:
+    """Publish data for all EV loads (power and SOC)."""
+    cols = []
+    
+    # Check if EV manager is enabled
+    if not hasattr(ctx.opt, 'ev_manager') or not ctx.opt.ev_manager.is_enabled():
+        return cols
+    
+    # Get custom EV sensor IDs from params (with defaults)
+    custom_ev_power = ctx.params["passed_data"].get("custom_ev_forecast_id", [])
+    custom_ev_soc = ctx.params["passed_data"].get("custom_ev_soc_id", [])
+    
+    for k in range(ctx.opt.ev_manager.num_evs):
+        # Publish EV charging power
+        col_power = f"P_EV{k}"
+        if col_power in opt_res_latest.columns:
+            if k < len(custom_ev_power):
+                entity_conf = custom_ev_power[k]
+            else:
+                # Default configuration if not specified
+                entity_conf = {
+                    "entity_id": f"sensor.p_ev{k}",
+                    "unit_of_measurement": "W",
+                    "friendly_name": f"EV {k} Charging Power"
+                }
+            
+            await ctx.rh.post_data(
+                opt_res_latest[col_power],
+                ctx.idx,
+                entity_conf["entity_id"],
+                "power",
+                entity_conf["unit_of_measurement"],
+                entity_conf["friendly_name"],
+                type_var="ev_power",
+                **ctx.common_kwargs,
+            )
+            cols.append(col_power)
+        else:
+            ctx.logger.warning(f"{col_power} was not found in results DataFrame.")
+        
+        # Publish EV SOC
+        col_soc = f"SOC_EV{k}"
+        if col_soc in opt_res_latest.columns:
+            if k < len(custom_ev_soc):
+                entity_conf = custom_ev_soc[k]
+            else:
+                # Default configuration if not specified
+                entity_conf = {
+                    "entity_id": f"sensor.soc_ev{k}",
+                    "unit_of_measurement": "%",
+                    "friendly_name": f"EV {k} State of Charge"
+                }
+            
+            await ctx.rh.post_data(
+                opt_res_latest[col_soc],
+                ctx.idx,
+                entity_conf["entity_id"],
+                "battery",
+                entity_conf["unit_of_measurement"],
+                entity_conf["friendly_name"],
+                type_var="ev_soc",
+                **ctx.common_kwargs,
+            )
+            cols.append(col_soc)
+        else:
+            ctx.logger.warning(f"{col_soc} was not found in results DataFrame.")
+    
+    if cols:
+        ctx.logger.info(f"Published {len(cols)} EV sensors")
+    
+    return cols
+
+
 async def _publish_thermal_variable(
     rh, opt_res_latest, idx, k, custom_ids, col_prefix, type_var, unit_type, kwargs
 ) -> str | None:
@@ -1973,6 +2046,7 @@ async def publish_data(
     cols_published = []
     cols_published.extend(await _publish_standard_forecasts(ctx, opt_res_latest))
     cols_published.extend(await _publish_deferrable_loads(ctx, opt_res_latest))
+    cols_published.extend(await _publish_ev_loads(ctx, opt_res_latest))
     cols_published.extend(await _publish_thermal_loads(ctx, opt_res_latest))
     cols_published.extend(await _publish_battery_data(ctx, opt_res_latest))
     cols_published.extend(await _publish_grid_and_costs(ctx, opt_res_latest))

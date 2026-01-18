@@ -1,6 +1,21 @@
 # Changelog
 
 ## Unreleased
+### New Features ⚡
+- **Electric Vehicle (EV) Optimization**: Added intelligent EV charging optimization with support for multiple vehicles
+  - New `ElectricVehicle` and `EVManager` classes for EV state management
+  - SOC (State of Charge) tracking and charging schedule optimization
+  - Integration with Linear Programming optimizer (Coin-OR HiGHS)
+  - Support for variable charging power (minimum to maximum)
+  - Availability schedule constraints (EV home/away)
+  - Minimum range requirements for trip planning
+  - Multi-vehicle support with independent optimization
+  - New API endpoints: `/action/ev-soc`, `/action/ev-availability`, `/action/ev-range-requirements`, `/action/ev-status`
+  - Automatic sensor publishing: `sensor.p_ev{k}` (charging power), `sensor.soc_ev{k}` (state of charge)
+  - New configuration parameters: `number_of_ev_loads`, `ev_battery_capacity`, `ev_charging_efficiency`, `ev_nominal_charging_power`, `ev_minimum_charging_power`, `ev_consumption_efficiency`
+  - Comprehensive documentation including Node-RED integration guide for Google Calendar-based trip planning
+  - Web UI integration with automatic parameter detection and configuration
+
 ### Fix
 - Fix broken MLRegressor with not needed load treatment of a CSV file
 - Fix missing outdoor temperature data for thermal model

@@ -1305,18 +1305,23 @@ def get_injection_dict(df: pd.DataFrame, plot_size: int | None = 1366) -> dict:
     )
     fig_0.update_layout(xaxis_title="Timestamp", yaxis_title="System powers (W)")
     image_path_0 = fig_0.to_html(full_html=False, default_width="75%")
-    # Figure 1: Battery SOC (Optional)
+    # Figure 1: Battery SOC and EV SOC (Optional)
     image_path_1 = None
-    if "SOC_opt" in df.columns.to_list():
+    cols_soc = [i for i in df.columns.to_list() if "SOC_opt" in i or "SOC_EV" in i]
+    if len(cols_soc) > 0:
+        n_colors_soc = len(cols_soc)
+        colors_soc = px.colors.sample_colorscale(
+            "jet", [n / (n_colors_soc - 1) if n_colors_soc > 1 else 0 for n in range(n_colors_soc)]
+        )
         fig_1 = px.line(
-            df["SOC_opt"],
-            title="Battery state of charge schedule after optimization results",
+            df[cols_soc],
+            title="Battery and EV state of charge schedule after optimization results",
             template="presentation",
             line_shape="hv",
-            color_discrete_sequence=colors,
+            color_discrete_sequence=colors_soc,
             render_mode="svg",
         )
-        fig_1.update_layout(xaxis_title="Timestamp", yaxis_title="Battery SOC (%)")
+        fig_1.update_layout(xaxis_title="Timestamp", yaxis_title="SOC (%)")
         image_path_1 = fig_1.to_html(full_html=False, default_width="75%")
     # Figure Thermal: Temperatures (Optional)
     # Detect columns for predicted or target temperatures

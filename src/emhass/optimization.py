@@ -11,6 +11,7 @@ import pulp as plp
 from pulp import COIN_CMD, GLPK_CMD, PULP_CBC_CMD, HiGHS
 
 from emhass import utils
+from emhass.ev import EVManager
 
 
 class Optimization:
@@ -119,6 +120,11 @@ class Optimization:
             f"Solver configuration: lp_solver={self.lp_solver}, lp_solver_path={self.lp_solver_path}"
         )
         self.logger.debug(f"Number of threads: {self.num_threads}")
+        
+        # Initialize EV Manager if EV optimization is enabled
+        self.ev_manager = EVManager(plant_conf, optim_conf, logger)
+        if self.ev_manager.is_enabled():
+            self.logger.info(f"EV optimization enabled with {self.ev_manager.num_evs} vehicle(s)")
 
     def _setup_stress_cost(self, set_i, cost_conf_key, max_power, var_name_prefix):
         """
@@ -369,6 +375,34 @@ class Optimization:
             )
         D = {(i): plp.LpVariable(cat="Binary", name=f"D_{i}") for i in set_i}
         E = {(i): plp.LpVariable(cat="Binary", name=f"E_{i}") for i in set_i}
+        
+        # EV decision variables
+        p_ev = []
+        soc_ev = []
+        if self.ev_manager.is_enabled():
+            for k in range(self.ev_manager.num_evs):
+                ev = self.ev_manager.get_ev(k)
+                # Charging power variable (0 to nominal power)
+                p_ev.append({
+                    (i): plp.LpVariable(
+                        cat="Continuous",
+                        lowBound=0,
+                        upBound=ev.nominal_charging_power,
+                        name=f"P_EV{k}_{i}"
+                    )
+                    for i in set_i
+                })
+                # SOC variable (0 to 1)
+                soc_ev.append({
+                    (i): plp.LpVariable(
+                        cat="Continuous",
+                        lowBound=0,
+                        upBound=1,
+                        name=f"SOC_EV{k}_{i}"
+                    )
+                    for i in set_i
+                })
+            self.logger.info(f"Added {self.ev_manager.num_evs} EV decision variables to optimization")
 
         # Initialize stress configuration dictionaries
         inv_stress_conf = None
@@ -439,11 +473,15 @@ class Optimization:
         ## Define objective
         p_def_sum = []
         for i in set_i:
-            p_def_sum.append(
-                plp.lpSum(
-                    p_deferrable[k][i] for k in range(self.optim_conf["number_of_deferrable_loads"])
-                )
+            # Sum deferrable loads + EV loads
+            def_load_sum = plp.lpSum(
+                p_deferrable[k][i] for k in range(self.optim_conf["number_of_deferrable_loads"])
             )
+            if self.ev_manager.is_enabled():
+                ev_load_sum = plp.lpSum(p_ev[k][i] for k in range(self.ev_manager.num_evs))
+                p_def_sum.append(def_load_sum + ev_load_sum)
+            else:
+                p_def_sum.append(def_load_sum)
         if self.costfun == "profit":
             if self.optim_conf["set_total_pv_sell"]:
                 objective = plp.lpSum(
@@ -1486,6 +1524,71 @@ class Optimization:
                     }
                 )
 
+        # EV constraints
+        if self.ev_manager.is_enabled():
+            self.logger.info(f"Adding EV constraints for {self.ev_manager.num_evs} vehicle(s)")
+            
+            for k in range(self.ev_manager.num_evs):
+                ev = self.ev_manager.get_ev(k)
+                self.logger.debug(f"Setting up constraints for EV {k}")
+                
+                # 1. SOC balance equation: SOC[i+1] = SOC[i] + (P_EV[i] * dt * efficiency) / battery_capacity
+                for i in set_i:
+                    if i == 0:
+                        # Initial SOC
+                        constraints.update({
+                            f"constraint_ev{k}_soc_initial": plp.LpConstraint(
+                                e=soc_ev[k][0],
+                                sense=plp.LpConstraintEQ,
+                                rhs=ev.get_soc()
+                            )
+                        })
+                    else:
+                        # SOC balance: SOC[i] = SOC[i-1] + (P_EV[i-1] * dt * eff) / capacity
+                        soc_delta = (p_ev[k][i-1] * self.time_step * ev.charging_efficiency) / ev.battery_capacity
+                        constraints.update({
+                            f"constraint_ev{k}_soc_balance_{i}": plp.LpConstraint(
+                                e=soc_ev[k][i] - soc_ev[k][i-1] - soc_delta,
+                                sense=plp.LpConstraintEQ,
+                                rhs=0
+                            )
+                        })
+                
+                # 2. Availability constraint: P_EV = 0 when vehicle is not available
+                # This will be set via runtime data (ev_manager.set_availability_schedule)
+                # For now, allow charging at all times (availability will be enforced via API)
+                
+                # 3. Minimum charging power constraint: 
+                # If charging (P_EV > 0), then P_EV >= minimum_charging_power
+                # This is handled by setting lowBound in variable definition and optional binary constraint
+                if ev.minimum_charging_power > 0:
+                    # Add binary variable for EV on/off state
+                    p_ev_bin = {(i): plp.LpVariable(cat="Binary", name=f"P_EV{k}_bin_{i}") for i in set_i}
+                    
+                    M = ev.nominal_charging_power  # Big-M value
+                    for i in set_i:
+                        # If p_ev_bin = 0, then P_EV must be 0
+                        # If p_ev_bin = 1, then P_EV can be between min and max
+                        constraints.update({
+                            f"constraint_ev{k}_min_power1_{i}": plp.LpConstraint(
+                                e=p_ev[k][i] - M * p_ev_bin[i],
+                                sense=plp.LpConstraintLE,
+                                rhs=0
+                            )
+                        })
+                        constraints.update({
+                            f"constraint_ev{k}_min_power2_{i}": plp.LpConstraint(
+                                e=p_ev[k][i] - ev.minimum_charging_power * p_ev_bin[i],
+                                sense=plp.LpConstraintGE,
+                                rhs=0
+                            )
+                        })
+                
+                # 4. Range/SOC requirements: will be set via runtime data
+                # For now, just ensure SOC doesn't go below 0 (already enforced by variable bounds)
+                
+                self.logger.debug(f"EV {k}: Added SOC balance and power constraints")
+
         # The battery constraints
         if self.optim_conf["set_use_battery"]:
             # Optional constraints to avoid charging the battery from the grid
@@ -1705,16 +1808,27 @@ class Optimization:
         if self.plant_conf["compute_curtailment"]:
             opt_tp["P_PV_curtailment"] = [p_pv_curtailment[i].varValue for i in set_i]
         opt_tp.index = data_opt.index
+        
+        # Extract EV optimization results
+        if self.ev_manager.is_enabled():
+            for k in range(self.ev_manager.num_evs):
+                opt_tp[f"P_EV{k}"] = [p_ev[k][i].varValue for i in set_i]
+                opt_tp[f"SOC_EV{k}"] = [soc_ev[k][i].varValue * 100 for i in set_i]  # Convert to percentage
+            self.logger.info(f"Extracted optimization results for {self.ev_manager.num_evs} EV(s)")
 
         # Lets compute the optimal cost function
         p_def_sum_tp = []
         for i in set_i:
-            p_def_sum_tp.append(
-                sum(
-                    p_deferrable[k][i].varValue
-                    for k in range(self.optim_conf["number_of_deferrable_loads"])
-                )
+            def_sum = sum(
+                p_deferrable[k][i].varValue
+                for k in range(self.optim_conf["number_of_deferrable_loads"])
             )
+            # Add EV charging power to deferrable load sum
+            if self.ev_manager.is_enabled():
+                ev_sum = sum(p_ev[k][i].varValue for k in range(self.ev_manager.num_evs))
+                p_def_sum_tp.append(def_sum + ev_sum)
+            else:
+                p_def_sum_tp.append(def_sum)
         opt_tp["unit_load_cost"] = [unit_load_cost[i] for i in set_i]
         opt_tp["unit_prod_price"] = [unit_prod_price[i] for i in set_i]
         if self.optim_conf["set_total_pv_sell"]:

@@ -2140,6 +2140,264 @@ class TestOptimization(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class TestEVOptimization(unittest.IsolatedAsyncioTestCase):
+    """Test cases for EV optimization functionality."""
+
+    async def asyncSetUp(self):
+        """Set up test environment with EV configuration."""
+        get_data_from_file = True
+        params = {}
+        # Build params with default config and secrets
+        if emhass_conf["defaults_path"].exists():
+            config = await build_config(emhass_conf, logger, emhass_conf["defaults_path"])
+            _, secrets = await build_secrets(emhass_conf, logger, no_response=True)
+            params = await build_params(emhass_conf, secrets, config, logger)
+            params["optim_conf"]["set_use_pv"] = True
+        else:
+            raise Exception(
+                "config_defaults.json does not exist in path: " + str(emhass_conf["defaults_path"])
+            )
+
+        # Enable EV optimization
+        params["optim_conf"]["number_of_ev_loads"] = 1
+        params["plant_conf"]["ev_battery_capacity"] = [77000]  # 77 kWh
+        params["plant_conf"]["ev_charging_efficiency"] = [0.9]
+        params["plant_conf"]["ev_nominal_charging_power"] = [4600]  # 4.6 kW
+        params["plant_conf"]["ev_minimum_charging_power"] = [1380]  # 1.38 kW
+        params["plant_conf"]["ev_consumption_efficiency"] = [0.15]  # kWh/km
+
+        params_json = orjson.dumps(params).decode("utf-8")
+        retrieve_hass_conf, optim_conf, plant_conf = get_yaml_parse(params_json, logger)
+        
+        self.retrieve_hass_conf = retrieve_hass_conf
+        self.optim_conf = optim_conf
+        self.plant_conf = plant_conf
+        self.params_json = params_json
+
+        # Build RetrieveHass object
+        rh = RetrieveHass(
+            retrieve_hass_conf["hass_url"],
+            retrieve_hass_conf["long_lived_token"],
+            retrieve_hass_conf["optimization_time_step"],
+            retrieve_hass_conf["time_zone"],
+            params_json,
+            emhass_conf,
+            logger,
+        )
+
+        # Obtain sensor values from saved file
+        if get_data_from_file:
+            async with aiofiles.open(emhass_conf["data_path"] / "test_df_final.pkl", "rb") as inp:
+                contents = await inp.read()
+                rh.df_final, days_list, var_list, rh.ha_config = pickle.loads(contents)
+                rh.var_list = var_list
+
+            retrieve_hass_conf["sensor_power_load_no_var_loads"] = str(var_list[0])
+            retrieve_hass_conf["sensor_power_photovoltaics"] = str(var_list[1])
+            retrieve_hass_conf["sensor_linear_interp"] = [
+                retrieve_hass_conf["sensor_power_photovoltaics"],
+                retrieve_hass_conf["sensor_power_load_no_var_loads"],
+            ]
+            retrieve_hass_conf["sensor_replace_zero"] = [
+                retrieve_hass_conf["sensor_power_photovoltaics"]
+            ]
+
+        # Prepare data
+        rh.prepare_data(
+            retrieve_hass_conf["sensor_power_load_no_var_loads"],
+            load_negative=retrieve_hass_conf["load_negative"],
+            set_zero_min=retrieve_hass_conf["set_zero_min"],
+            var_replace_zero=retrieve_hass_conf["sensor_replace_zero"],
+            var_interp=retrieve_hass_conf["sensor_linear_interp"],
+        )
+        df_input_data = rh.df_final.copy()
+
+        # Get forecasts
+        fcst = Forecast(
+            retrieve_hass_conf,
+            optim_conf,
+            plant_conf,
+            params_json,
+            emhass_conf,
+            logger,
+            get_data_from_file=get_data_from_file,
+        )
+        df_weather = fcst.get_weather_forecast(method=optim_conf["weather_forecast_method"])
+        P_PV_forecast = fcst.get_power_from_weather(df_weather)
+        P_load_forecast = fcst.get_load_forecast()
+
+        df_input_data = pd.concat([P_PV_forecast, P_load_forecast], axis=1)
+        df_input_data.columns = ["P_PV_forecast", "P_load_forecast"]
+
+        self.df_input_data = df_input_data
+
+    async def test_ev_optimization_enabled(self):
+        """Test that EV optimization is properly enabled."""
+        opt = Optimization(
+            self.retrieve_hass_conf,
+            self.optim_conf,
+            self.plant_conf,
+            1.0,
+            emhass_conf,
+            logger,
+        )
+
+        # Check EV manager is initialized
+        self.assertIsNotNone(opt.ev_manager)
+        self.assertTrue(opt.ev_manager.is_enabled())
+        self.assertEqual(opt.ev_manager.num_evs, 1)
+
+    async def test_ev_variables_in_optimization(self):
+        """Test that EV variables are created in optimization."""
+        opt = Optimization(
+            self.retrieve_hass_conf,
+            self.optim_conf,
+            self.plant_conf,
+            1.0,
+            emhass_conf,
+            logger,
+        )
+
+        unit_load_cost = self.df_input_data[self.df_input_data.columns[1]]
+        unit_prod_price = pd.Series(0.0, index=unit_load_cost.index)
+
+        opt_res = opt.perform_optimization(
+            self.df_input_data, unit_load_cost, unit_prod_price
+        )
+
+        # Check that P_EV0 column exists in results
+        self.assertIn("P_EV0", opt_res.columns)
+        self.assertIn("SOC_EV0", opt_res.columns)
+
+    async def test_ev_charging_schedule(self):
+        """Test that EV produces a valid charging schedule."""
+        opt = Optimization(
+            self.retrieve_hass_conf,
+            self.optim_conf,
+            self.plant_conf,
+            1.0,
+            emhass_conf,
+            logger,
+        )
+
+        # Set EV as available for all timesteps
+        ev = opt.ev_manager.get_ev(0)
+        ev.set_availability(True)
+        ev.set_soc(0.3)  # Start at 30% SOC
+
+        unit_load_cost = self.df_input_data[self.df_input_data.columns[1]]
+        unit_prod_price = pd.Series(0.0, index=unit_load_cost.index)
+
+        opt_res = opt.perform_optimization(
+            self.df_input_data, unit_load_cost, unit_prod_price
+        )
+
+        # Check charging power is within bounds
+        p_ev = opt_res["P_EV0"]
+        self.assertTrue((p_ev >= 0).all())  # No negative charging
+        self.assertTrue((p_ev <= 4600).all())  # Not exceeding nominal power
+
+        # Check SOC evolution
+        soc_ev = opt_res["SOC_EV0"]
+        self.assertTrue((soc_ev >= 0).all())
+        self.assertTrue((soc_ev <= 1).all())
+        # SOC should increase or stay the same (no discharge)
+        soc_diffs = soc_ev.diff()[1:]
+        self.assertTrue((soc_diffs >= -0.01).all())  # Allow small numerical errors
+
+    async def test_ev_respects_availability(self):
+        """Test that EV only charges when available."""
+        opt = Optimization(
+            self.retrieve_hass_conf,
+            self.optim_conf,
+            self.plant_conf,
+            1.0,
+            emhass_conf,
+            logger,
+        )
+
+        # Set EV as unavailable (away from home)
+        ev = opt.ev_manager.get_ev(0)
+        ev.set_availability(False)
+        ev.set_soc(0.5)
+
+        unit_load_cost = self.df_input_data[self.df_input_data.columns[1]]
+        unit_prod_price = pd.Series(0.0, index=unit_load_cost.index)
+
+        opt_res = opt.perform_optimization(
+            self.df_input_data, unit_load_cost, unit_prod_price
+        )
+
+        # When unavailable, charging power should be zero
+        p_ev = opt_res["P_EV0"]
+        self.assertTrue((p_ev == 0).all())
+
+    async def test_ev_meets_minimum_soc_requirement(self):
+        """Test that EV meets minimum SOC requirements."""
+        opt = Optimization(
+            self.retrieve_hass_conf,
+            self.optim_conf,
+            self.plant_conf,
+            1.0,
+            emhass_conf,
+            logger,
+        )
+
+        # Set minimum SOC requirement
+        ev = opt.ev_manager.get_ev(0)
+        ev.set_availability(True)
+        ev.set_soc(0.3)  # Start at 30%
+        ev.set_minimum_required_soc(0.8)  # Require 80% by optimization end
+
+        unit_load_cost = self.df_input_data[self.df_input_data.columns[1]]
+        unit_prod_price = pd.Series(0.0, index=unit_load_cost.index)
+
+        opt_res = opt.perform_optimization(
+            self.df_input_data, unit_load_cost, unit_prod_price
+        )
+
+        # Final SOC should meet or exceed requirement
+        final_soc = opt_res["SOC_EV0"].iloc[-1]
+        self.assertGreaterEqual(final_soc, 0.79)  # Allow small tolerance
+
+    async def test_ev_with_cheap_electricity(self):
+        """Test that EV charges during cheap electricity periods."""
+        opt = Optimization(
+            self.retrieve_hass_conf,
+            self.optim_conf,
+            self.plant_conf,
+            1.0,
+            emhass_conf,
+            logger,
+        )
+
+        ev = opt.ev_manager.get_ev(0)
+        ev.set_availability(True)
+        ev.set_soc(0.3)
+
+        # Create price profile: cheap at night, expensive during day
+        unit_load_cost = pd.Series(
+            [0.05 if i % 2 == 0 else 0.30 for i in range(len(self.df_input_data))],
+            index=self.df_input_data.index,
+        )
+        unit_prod_price = pd.Series(0.0, index=unit_load_cost.index)
+
+        opt_res = opt.perform_optimization(
+            self.df_input_data, unit_load_cost, unit_prod_price
+        )
+
+        # Check that more charging happens during cheap periods
+        p_ev = opt_res["P_EV0"]
+        cheap_periods = unit_load_cost < 0.15
+        expensive_periods = unit_load_cost > 0.20
+
+        avg_power_cheap = p_ev[cheap_periods].mean()
+        avg_power_expensive = p_ev[expensive_periods].mean()
+
+        # Should charge more during cheap periods
+        self.assertGreater(avg_power_cheap, avg_power_expensive)
+
+
 if __name__ == "__main__":
     unittest.main()
     ch.close()

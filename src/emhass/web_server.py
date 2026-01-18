@@ -35,6 +35,7 @@ from emhass.command_line import (
     weather_forecast_cache,
 )
 from emhass.connection_manager import close_global_connection, get_websocket_client, is_connected
+from emhass.ev import EVManager
 from emhass.utils import (
     build_config,
     build_legacy_config_params,
@@ -53,6 +54,7 @@ entity_path: Path = Path()
 params_secrets: dict[str, str | float] = {}
 continual_publish_thread: list = []
 injection_dict: dict = {}
+ev_manager: EVManager | None = None
 
 templates = jinja2.Environment(
     autoescape=True,
@@ -613,12 +615,242 @@ async def action_call(action_name: str):
     return await make_response(msg, status)
 
 
+@app.route("/action/ev-availability", methods=["POST"])
+async def ev_availability():
+    """
+    Set EV availability schedule.
+    Expects JSON: {"ev_index": 0, "availability": [0, 0, 1, 1, 1, ...]}
+    Where 0 = vehicle absent, 1 = vehicle available for charging
+    """
+    global ev_manager
+    
+    try:
+        data = await request.get_json(force=True)
+        
+        if not data:
+            return await make_response({"error": "No data provided"}, 400)
+        
+        ev_index = data.get("ev_index", 0)
+        availability = data.get("availability")
+        
+        if availability is None:
+            return await make_response({"error": "Missing 'availability' field"}, 400)
+        
+        if not isinstance(availability, list):
+            return await make_response({"error": "'availability' must be a list"}, 400)
+        
+        # Initialize EV manager if needed
+        if ev_manager is None:
+            params, _, _ = await _load_params_and_runtime(request, emhass_conf, app.logger)
+            if params is None:
+                return await make_response({"error": "Unable to load parameters"}, 500)
+            params_dict = orjson.loads(params)
+            ev_manager = EVManager(
+                params_dict.get("plant_conf", {}),
+                params_dict.get("optim_conf", {}),
+                app.logger
+            )
+        
+        if not ev_manager.is_enabled():
+            return await make_response({"error": "EV optimization is not enabled"}, 400)
+        
+        # Set availability schedule
+        ev_manager.set_availability_schedule(ev_index, availability)
+        
+        app.logger.info(f"Set EV {ev_index} availability schedule with {len(availability)} timesteps")
+        
+        return await make_response({
+            "message": f"Successfully set availability schedule for EV {ev_index}",
+            "ev_index": ev_index,
+            "timesteps": len(availability)
+        }, 201)
+        
+    except Exception as e:
+        app.logger.error(f"Error setting EV availability: {e}")
+        return await make_response({"error": str(e)}, 500)
+
+
+@app.route("/action/ev-range-requirements", methods=["POST"])
+async def ev_range_requirements():
+    """
+    Set minimum range requirements for EV.
+    Expects JSON: {"ev_index": 0, "range_km": [50, 50, 100, 50, ...]}
+    Where each value represents the minimum range required (in km) at that timestep
+    """
+    global ev_manager
+    
+    try:
+        data = await request.get_json(force=True)
+        
+        if not data:
+            return await make_response({"error": "No data provided"}, 400)
+        
+        ev_index = data.get("ev_index", 0)
+        range_km = data.get("range_km")
+        
+        if range_km is None:
+            return await make_response({"error": "Missing 'range_km' field"}, 400)
+        
+        if not isinstance(range_km, list):
+            return await make_response({"error": "'range_km' must be a list"}, 400)
+        
+        # Initialize EV manager if needed
+        if ev_manager is None:
+            params, _, _ = await _load_params_and_runtime(request, emhass_conf, app.logger)
+            if params is None:
+                return await make_response({"error": "Unable to load parameters"}, 500)
+            params_dict = orjson.loads(params)
+            ev_manager = EVManager(
+                params_dict.get("plant_conf", {}),
+                params_dict.get("optim_conf", {}),
+                app.logger
+            )
+        
+        if not ev_manager.is_enabled():
+            return await make_response({"error": "EV optimization is not enabled"}, 400)
+        
+        # Set range requirements
+        ev_manager.set_range_requirements(ev_index, range_km)
+        
+        app.logger.info(f"Set EV {ev_index} range requirements with {len(range_km)} timesteps")
+        
+        return await make_response({
+            "message": f"Successfully set range requirements for EV {ev_index}",
+            "ev_index": ev_index,
+            "timesteps": len(range_km)
+        }, 201)
+        
+    except Exception as e:
+        app.logger.error(f"Error setting EV range requirements: {e}")
+        return await make_response({"error": str(e)}, 500)
+
+
+@app.route("/action/ev-status", methods=["GET"])
+async def ev_status():
+    """
+    Get current EV status including SOC, range, and configuration.
+    Optional query parameter: ev_index (default: 0)
+    """
+    global ev_manager
+    
+    try:
+        ev_index = int(request.args.get("ev_index", 0))
+        
+        # Initialize EV manager if needed
+        if ev_manager is None:
+            params, _, _ = await _load_params_and_runtime(request, emhass_conf, app.logger)
+            if params is None:
+                return await make_response({"error": "Unable to load parameters"}, 500)
+            params_dict = orjson.loads(params)
+            ev_manager = EVManager(
+                params_dict.get("plant_conf", {}),
+                params_dict.get("optim_conf", {}),
+                app.logger
+            )
+        
+        if not ev_manager.is_enabled():
+            return await make_response({
+                "enabled": False,
+                "message": "EV optimization is not enabled"
+            }, 200)
+        
+        ev = ev_manager.get_ev(ev_index)
+        if ev is None:
+            return await make_response({"error": f"EV {ev_index} not found"}, 404)
+        
+        status = {
+            "enabled": True,
+            "ev_index": ev_index,
+            "soc_percent": ev.get_soc() * 100.0,
+            "energy_level_wh": ev.get_energy_level(),
+            "current_range_km": ev.get_current_range(),
+            "battery_capacity_wh": ev.battery_capacity,
+            "charging_efficiency": ev.charging_efficiency,
+            "nominal_charging_power_w": ev.nominal_charging_power,
+            "minimum_charging_power_w": ev.minimum_charging_power,
+            "consumption_efficiency_kwh_per_km": ev.consumption_efficiency
+        }
+        
+        app.logger.info(f"Retrieved status for EV {ev_index}: SOC={status['soc_percent']:.1f}%, Range={status['current_range_km']:.1f}km")
+        
+        return await make_response(status, 200)
+        
+    except ValueError:
+        return await make_response({"error": "Invalid ev_index parameter"}, 400)
+    except Exception as e:
+        app.logger.error(f"Error getting EV status: {e}")
+        return await make_response({"error": str(e)}, 500)
+
+
+@app.route("/action/ev-soc", methods=["POST"])
+async def ev_soc_update():
+    """
+    Update EV state of charge.
+    Expects JSON: {"ev_index": 0, "soc_percent": 75.5}
+    """
+    global ev_manager
+    
+    try:
+        data = await request.get_json(force=True)
+        
+        if not data:
+            return await make_response({"error": "No data provided"}, 400)
+        
+        ev_index = data.get("ev_index", 0)
+        soc_percent = data.get("soc_percent")
+        
+        if soc_percent is None:
+            return await make_response({"error": "Missing 'soc_percent' field"}, 400)
+        
+        if not isinstance(soc_percent, (int, float)):
+            return await make_response({"error": "'soc_percent' must be a number"}, 400)
+        
+        if not 0 <= soc_percent <= 100:
+            return await make_response({"error": "'soc_percent' must be between 0 and 100"}, 400)
+        
+        # Initialize EV manager if needed
+        if ev_manager is None:
+            params, _, _ = await _load_params_and_runtime(request, emhass_conf, app.logger)
+            if params is None:
+                return await make_response({"error": "Unable to load parameters"}, 500)
+            params_dict = orjson.loads(params)
+            ev_manager = EVManager(
+                params_dict.get("plant_conf", {}),
+                params_dict.get("optim_conf", {}),
+                app.logger
+            )
+        
+        if not ev_manager.is_enabled():
+            return await make_response({"error": "EV optimization is not enabled"}, 400)
+        
+        ev = ev_manager.get_ev(ev_index)
+        if ev is None:
+            return await make_response({"error": f"EV {ev_index} not found"}, 404)
+        
+        # Update SOC (convert percentage to 0-1 scale)
+        ev.set_soc(soc_percent / 100.0)
+        
+        app.logger.info(f"Updated EV {ev_index} SOC to {soc_percent:.1f}% (Range: {ev.get_current_range():.1f}km)")
+        
+        return await make_response({
+            "message": f"Successfully updated SOC for EV {ev_index}",
+            "ev_index": ev_index,
+            "soc_percent": soc_percent,
+            "energy_level_wh": ev.get_energy_level(),
+            "current_range_km": ev.get_current_range()
+        }, 201)
+        
+    except Exception as e:
+        app.logger.error(f"Error updating EV SOC: {e}")
+        return await make_response({"error": str(e)}, 500)
+
+
 async def _setup_paths() -> tuple[Path, Path, Path, Path, Path, Path]:
     """Helper to set up environment paths and update emhass_conf."""
     # Find env's, not not set defaults
     DATA_PATH = os.getenv("DATA_PATH", default="/data/")
     ROOT_PATH = os.getenv("ROOT_PATH", default=str(Path(__file__).parent))
-    CONFIG_PATH = os.getenv("CONFIG_PATH", default="/share/config.json")
+    CONFIG_PATH = os.getenv("CONFIG_PATH", default="/share/emhass-ev/config.json")
     OPTIONS_PATH = os.getenv("OPTIONS_PATH", default="/data/options.json")
     DEFAULTS_PATH = os.getenv("DEFAULTS_PATH", default=ROOT_PATH + "/data/config_defaults.json")
     ASSOCIATIONS_PATH = os.getenv("ASSOCIATIONS_PATH", default=ROOT_PATH + "/data/associations.csv")
@@ -850,8 +1082,8 @@ async def initialize(args: dict | None = None):
     continual_publish_thread = []
     # Log Startup Info
     # Logging
-    port = int(os.environ.get("PORT", 5000))
-    app.logger.info("Launching the emhass webserver at: http://" + server_ip + ":" + str(port))
+    port = int(os.environ.get("PORT", 5001))
+    app.logger.info("🚀 Launching the EMHASS-EV webserver at: http://" + server_ip + ":" + str(port))
     app.logger.info(
         "Home Assistant data fetch will be performed using url: " + params_secrets["hass_url"]
     )
@@ -883,7 +1115,7 @@ async def main() -> None:
     await initialize(args_dict)
     # For direct execution (development/testing), use uvicorn programmatically
     host = params_secrets.get("server_ip", "0.0.0.0")
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 5001))
     app.logger.info(f"Starting server directly on {host}:{port}")
     # Use uvicorn.Server to run within existing event loop
     config = uvicorn.Config(app, host=host, port=port, log_level="warning")

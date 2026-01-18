@@ -467,6 +467,44 @@
       "default_value": 0
     }
   },
+  "Electric Vehicle": {
+    "number_of_ev_loads": {
+      "friendly_name": "Number of electric vehicles",
+      "Description": "Define the number of electric vehicles to optimize. Set to 0 to disable EV optimization. Defaults to 0.",
+      "input": "int",
+      "default_value": 0
+    },
+    "ev_battery_capacity": {
+      "friendly_name": "EV battery capacity (Wh)",
+      "Description": "The total battery capacity of each electric vehicle in Watt-hours (Wh). Example: 77000 for a 77 kWh battery.",
+      "input": "array.float",
+      "default_value": 77000.0
+    },
+    "ev_charging_efficiency": {
+      "friendly_name": "EV charging efficiency",
+      "Description": "The charging efficiency of each electric vehicle (0-1). Accounts for losses during charging. Typical value: 0.9 (90%). Defaults to 0.9.",
+      "input": "array.float",
+      "default_value": 0.9
+    },
+    "ev_nominal_charging_power": {
+      "friendly_name": "EV nominal charging power (W)",
+      "Description": "The maximum charging power for each electric vehicle in Watts. Example: 4600 for a 20A charger at 230V.",
+      "input": "array.float",
+      "default_value": 4600.0
+    },
+    "ev_minimum_charging_power": {
+      "friendly_name": "EV minimum charging power (W)",
+      "Description": "The minimum charging power when the charger is active in Watts. Some chargers require a minimum current. Example: 1380 for 6A minimum. Set to 0 for variable power.",
+      "input": "array.float",
+      "default_value": 1380.0
+    },
+    "ev_consumption_efficiency": {
+      "friendly_name": "EV energy consumption (kWh/km)",
+      "Description": "The energy consumption of each electric vehicle in kWh per kilometer. Used to convert range requirements to energy. Typical value: 0.15-0.20. Defaults to 0.15.",
+      "input": "array.float",
+      "default_value": 0.15
+    }
+  },
   "Battery": {
     "set_use_battery": {
       "friendly_name": "Enable Battery",
