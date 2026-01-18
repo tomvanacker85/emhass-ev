@@ -218,8 +218,17 @@ async def configuration():
         # Safe fallback if params.pkl doesn't exist
         params = {}
 
+    # Flatten params dictionary for configuration page
+    # The configuration page expects a flat dictionary, but params is categorized
+    # (retrieve_hass_conf, optim_conf, plant_conf, params_secrets)
+    flat_config = {}
+    if isinstance(params, dict):
+        for category in params.values():
+            if isinstance(category, dict):
+                flat_config.update(category)
+
     template = templates.get_template("configuration.html")
-    return await make_response(template.render(config=params))
+    return await make_response(template.render(config=flat_config))
 
 
 @app.route("/template", methods=["GET"])
